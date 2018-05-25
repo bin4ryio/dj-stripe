@@ -11,15 +11,14 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+from copy import deepcopy
+from datetime import timedelta
 import decimal
 import logging
 import sys
 import uuid
 import warnings
-from copy import deepcopy
-from datetime import timedelta
 
-import stripe
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
@@ -29,9 +28,10 @@ from django.db.models.fields.related import ForeignKey, OneToOneField
 from django.utils import dateformat, six, timezone
 from django.utils.encoding import python_2_unicode_compatible, smart_text
 from django.utils.functional import cached_property
+import stripe
 
-from . import settings as djstripe_settings
 from . import enums, webhooks
+from . import settings as djstripe_settings
 from .context_managers import stripe_temporary_api_version
 from .enums import SubscriptionStatus
 from .exceptions import MultipleSubscriptionException, StripeObjectManipulationException
@@ -1377,10 +1377,6 @@ class Event(StripeObject):
     event that just happened. Events are processed in detail by their respective
     models (charge events by the Charge model, etc).
 
-    Events are initially **UNTRUSTED**, as it is possible for any web entity to
-    post any data to our webhook url. Data posted may be valid Stripe information,
-    garbage, or even malicious. The 'valid' flag in this model monitors this.
-
     **API VERSIONING**
 
     This is a tricky matter when it comes to webhooks. See the discussion here_.
@@ -1396,7 +1392,7 @@ class Event(StripeObject):
     2) retrieve the referenced object (e.g. the Charge, the Customer, etc) using
        the plugin's supported API version.
     3) process that event using the retrieved object which will, only now, be in
-    a format that you are certain to understand
+       a format that you are certain to understand
 
     # = Mapping the values of this field isn't currently on our roadmap.
         Please use the stripe dashboard to check the value of this field instead.
